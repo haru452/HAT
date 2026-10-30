@@ -4,6 +4,10 @@
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/activating-more-pixels-in-image-super/image-super-resolution-on-manga109-4x)](https://paperswithcode.com/sota/image-super-resolution-on-manga109-4x?p=activating-more-pixels-in-image-super)
 
 # メモ
+   git clone https://github.com/haru452/HAT.git
+   cd HAT
+   pip install -r requirements.txt
+   python setup.py develop
  python hat/train.py -opt options/train/train_HAT-L_SRx2_finetune.yml
 
 
