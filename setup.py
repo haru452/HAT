@@ -67,41 +67,11 @@ version_info = ({})
 
 
 def get_version():
+    ns = {}
     with open(version_file, 'r') as f:
-        exec(compile(f.read(), version_file, 'exec'))
-    return locals()['__version__']
+        exec(compile(f.read(), version_file, 'exec'), ns)
+    return ns['__version__']
 
 
 def get_requirements(filename='requirements.txt'):
     here = os.path.dirname(os.path.realpath(__file__))
-    with open(os.path.join(here, filename), 'r') as f:
-        requires = [line.replace('\n', '') for line in f.readlines()]
-    return requires
-
-
-if __name__ == '__main__':
-    write_version_py()
-    setup(
-        name='hat',
-        version=get_version(),
-        description='HAT',
-        long_description=readme(),
-        long_description_content_type='text/markdown',
-        author='Xiangyu Chen',
-        author_email='chxy95@gmail.com',
-        keywords='computer vision, pytorch, basicsr, image restoration, super-resolution',
-        url='https://github.com/chxy95/HAT',
-        include_package_data=True,
-        packages=find_packages(exclude=('options', 'datasets', 'experiments', 'results', 'tb_logger', 'wandb')),
-        classifiers=[
-            'Development Status :: 4 - Beta',
-            'License :: OSI Approved :: Apache Software License',
-            'Operating System :: OS Independent',
-            'Programming Language :: Python :: 3',
-            'Programming Language :: Python :: 3.7',
-            'Programming Language :: Python :: 3.8',
-        ],
-        license='MIT License',
-        setup_requires=['cython', 'numpy'],
-        install_requires=get_requirements(),
-        zip_safe=False)
