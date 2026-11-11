@@ -3,12 +3,52 @@
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/activating-more-pixels-in-image-super/image-super-resolution-on-set14-4x-upscaling)](https://paperswithcode.com/sota/image-super-resolution-on-set14-4x-upscaling?p=activating-more-pixels-in-image-super)
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/activating-more-pixels-in-image-super/image-super-resolution-on-manga109-4x)](https://paperswithcode.com/sota/image-super-resolution-on-manga109-4x?p=activating-more-pixels-in-image-super)
 
-# メモ
-   git clone https://github.com/haru452/HAT.git
-   cd HAT
-   pip install -r requirements.txt
-   python setup.py develop
- python hat/train.py -opt options/train/train_HAT-L_SRx2_finetune.yml
+# メモ（使い方）
+
+## 注意: Real-ESRGAN とは別の Python 環境を使う
+- HAT は `basicsr==1.3.4.9` 固定、Real-ESRGAN は `basicsr>=1.4.2` が必要。
+  同じ環境に入れるとどちらかが壊れるので、HAT 専用の環境を作る。
+- 古い basicsr は新しい Python では入らないことが多いので、Python 3.10 くらいを使う。
+- 実行するコマンドはすべて HAT フォルダ（この README がある場所）で行う。
+
+## 1. 環境を作る（初回だけ）
+```
+# まだ無ければ: git clone https://github.com/haru452/HAT.git ; cd HAT
+py -3.10 -m venv .venv-hat
+.venv-hat\Scripts\activate
+# PyTorch を先に入れる。cu121 の部分は自分の GPU / CUDA に合わせる
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+pip install -r requirements.txt
+python setup.py develop
+```
+- 2回目からは `.venv-hat\Scripts\activate` だけでよい。
+- `No module named 'torchvision.transforms.functional_tensor'` と出たら、
+  basicsr の `data/degradations.py` の該当 import を
+  `from torchvision.transforms.functional import rgb_to_grayscale` に書き換える。
+
+## 2. データを用意する
+| 置き場所 | 中身 |
+|---|---|
+| `datasets/GT` | 学習用の高解像度画像 |
+| `datasets/LR` | 学習用の低解像度画像（下のスクリプトで作る） |
+| `datasets/val/GT`, `datasets/val/LR` | 検証用（学習に使わない画像を 50〜100 枚ほど） |
+| `experiments/pretrained_models/HAT-L_SRx2_ImageNet-pretrain.pth` | 学習済みの重み（下の Google Drive から） |
+
+LR 画像の作り方（GT を 1/2 に縮小。GT と同じファイル名で出力）:
+```
+python options/make_lr.py
+python options/make_lr.py --gt datasets/val/GT --lr datasets/val/LR
+```
+- 縦横が 2 の倍数でない画像は飛ばされる。`--crop-gt` を付けると GT の端を切ってそろえる（GT を上書きする）。
+- GT 画像の短辺が 128 未満だと学習でエラーになる。
+
+## 3. 学習する（ファインチューニング x2）
+```
+python hat/train.py -opt options/train/train_HAT-L_SRx2_finetune.yml
+```
+- 設定は `options/train/train_HAT-L_SRx2_finetune.yml`。データや重みのパスを変えるときはここを直す。
+- 結果（ログ・重み）は `experiments/train_HAT-L_SRx2_finetune/` に保存される。
+- GPU のメモリが足りないときは yml の `batch_size_per_gpu` を下げる。
 
 
 # HAT [![Replicate](https://replicate.com/cjwbw/hat/badge)](https://replicate.com/cjwbw/hat)
