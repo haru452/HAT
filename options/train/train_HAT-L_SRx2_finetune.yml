@@ -11,8 +11,8 @@ datasets:
     name: dataset1
     type: PairedImageDataset
     # TODO(要確認): 自分のデータのパス。GTとLRは同じファイル名にすること
-    dataroot_gt: datasets/GT
-    dataroot_lq: datasets/LR
+    dataroot_gt: ./datasets/GT
+    dataroot_lq: ./datasets/LR
     io_backend:
       type: disk
 
@@ -72,6 +72,7 @@ path:
   # 倍率(x2)とモデル(HAT-L)が一致する重みを使うこと。空のままだとゼロから学習になります。
   pretrain_network_g: experiments/pretrained_models/HAT-L_SRx2_ImageNet-pretrain.pth
   strict_load_g: true
+  param_key_g: params_ema    # ← 追加(確認したキー名に合わせる)
   resume_state: ~
 
 # training settings
