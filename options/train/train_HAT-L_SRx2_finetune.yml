@@ -99,7 +99,7 @@ train:
 
 # validation settings
 val:
-  val_freq: !!float 1e4
+  val_freq: !!float 3e4
   save_img: false
   pbar: true  # 検証中も進み具合を表示する (falseだと検証中は何も出ず止まって見える)
 
