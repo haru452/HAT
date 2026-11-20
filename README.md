@@ -58,7 +58,7 @@ python hat/train.py -opt options/train/train_HAT-L_SRx2_finetune_realesrgan.yml
 - 劣化の値は EDSR の学習と同じ `Real-ESRGAN/EDSR/degradation_lunar_mild.yml`（月面向けの弱い劣化：ぼかし → 1/2 に縮小 → 白黒ノイズ。sinc と JPEG はなし）。
 - 正解は強調しない（`gt_usm: false`、EDSR の既定と同じ）。
 - **LR を前もって作る必要はない**（`options/make_lr.py` は不要）。
-- 検証は bicubic 版と同じ `datasets/val_small`。結果は `experiments/train_HAT-L_SRx2_finetune_realesrgan/` に保存される。
+- 検証は bicubic 版と同じ `datasets/val`（全 1909 枚、1 回約 9.5 時間）。検証は 30k・60k・90k iter と最後の計 4 回で、全体で約 3 日 1 時間。結果は `experiments/train_HAT-L_SRx2_finetune_realesrgan/` に保存される。
 
 
 # HAT [![Replicate](https://replicate.com/cjwbw/hat/badge)](https://replicate.com/cjwbw/hat)

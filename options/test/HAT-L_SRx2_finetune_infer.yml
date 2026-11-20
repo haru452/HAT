@@ -1,0 +1,54 @@
+# ファインチューニングした HAT-L x2 で、フォルダ内の画像を超解像して保存する (正解画像は不要)。
+# 実行 (HAT フォルダで): python hat/test.py -opt options/test/HAT-L_SRx2_finetune_infer.yml
+# 出力: results/HAT-L_SRx2_finetune_infer/visualization/my_images/<元の名前>_HAT-L_SRx2_finetune_infer.png
+name: HAT-L_SRx2_finetune_infer
+model_type: HATModel
+scale: 2
+num_gpu: 1
+manual_seed: 0
+
+# 画像を 256 画素ずつに分けて処理する (大きな画像でも GPU のメモリが足りるように)。
+# メモリ不足で落ちたら tile_size を 128 に下げる。どちらも 16 (window_size) の倍数にする。
+tile:
+  tile_size: 256
+  tile_pad: 32
+
+datasets:
+  test_1:
+    name: my_images
+    type: SingleImageDataset
+    # TODO: 超解像したい画像 (低解像度のまま) を入れたフォルダ
+    dataroot_lq: ./datasets/infer_input
+    io_backend:
+      type: disk
+
+# network structures (学習と同じ)
+network_g:
+  type: HAT
+  upscale: 2
+  in_chans: 3
+  img_size: 64
+  window_size: 16
+  compress_ratio: 3
+  squeeze_factor: 30
+  conv_scale: 0.01
+  overlap_ratio: 0.5
+  img_range: 1.
+  depths: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+  embed_dim: 180
+  num_heads: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+  mlp_ratio: 2
+  upsampler: 'pixelshuffle'
+  resi_connection: '1conv'
+
+path:
+  # bicubic 版の最後の重み。Real-ESRGAN 方式の学習のあとは
+  # experiments/train_HAT-L_SRx2_finetune_realesrgan/models/net_g_100000.pth に変える
+  pretrain_network_g: ./experiments/train_HAT-L_SRx2_finetune/models/net_g_100000.pth
+  strict_load_g: true
+  param_key_g: 'params_ema'
+
+# 正解画像がないので PSNR などは計算せず、画像の保存だけ行う
+val:
+  save_img: true
+  suffix: ~  # ~ のときはファイル名の後ろに name が付く

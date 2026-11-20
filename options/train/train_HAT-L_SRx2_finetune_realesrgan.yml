@@ -88,9 +88,9 @@ datasets:
   val_1:
     name: my_val
     type: PairedImageDataset
-    # bicubic 版と同じ検証データ (val_small、LR は bicubic)。2つの学習を同じ条件で比べるため。
-    dataroot_gt: ./datasets/val_small/GT
-    dataroot_lq: ./datasets/val_small/LR
+    # 検証は datasets/val の全 1909 枚を使う (1 回に約 9.5 時間かかるので、val_freq で回数を減らしている)
+    dataroot_gt: ./datasets/val/GT
+    dataroot_lq: ./datasets/val/LR
     io_backend:
       type: disk
 
@@ -145,7 +145,7 @@ train:
 
 # validation settings
 val:
-  val_freq: !!float 1e4
+  val_freq: !!float 3e4  # 30k, 60k, 90k iter と学習の最後 (100k) の計4回検証する (1回約9.5時間。全体で約3日1時間)
   save_img: false
   pbar: true
 
