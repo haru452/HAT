@@ -60,6 +60,37 @@ python hat/train.py -opt options/train/train_HAT-L_SRx2_finetune_realesrgan.yml
 - **LR を前もって作る必要はない**（`options/make_lr.py` は不要）。
 - 検証は bicubic 版と同じ `datasets/val`（全 1909 枚、1 回約 9.5 時間）。検証は 30k・60k・90k iter と最後の計 4 回で、全体で約 3 日 1 時間。結果は `experiments/train_HAT-L_SRx2_finetune_realesrgan/` に保存される。
 
+### 学習の止め方・注意
+- BasicSR は学習の最後（`End of training.` のあと）にもう一度検証をする。最後の iter が `val_freq` の倍数だと、同じ検証を 2 回することになる。1 回目の結果がログに出ていて、重み（`models/net_g_<iter>.pth`）が保存されていれば、`kill <PID>` で止めてよい。
+- 学習中は GPU のメモリをほぼ使い切るので、同時に推論や別の学習を動かさない。
+
+## 4. 推論する（学習した重みで超解像する）
+正解画像はいらない。フォルダに入れた低解像度の画像を 2 倍にして保存する。
+```
+mkdir -p datasets/infer_input        # ここに超解像したい画像を入れる
+python hat/infer.py --weight experiments/train_HAT-L_SRx2_finetune/models/net_g_100000.pth
+```
+Real-ESRGAN 方式で学習した重みを使う例（入力フォルダとタイルの大きさも変える）:
+```
+python hat/infer.py --weight experiments/train_HAT-L_SRx2_finetune_realesrgan/models/net_g_100000.pth \
+    --input datasets/infer_input --tile_size 128
+```
+
+| 引数 | 省略したとき | 説明 |
+|---|---|---|
+| `--weight` | （必須） | 使う重み（.pth）。`experiments/<実験名>/models/` にある |
+| `--input` | `datasets/infer_input` | 超解像したい画像のフォルダ |
+| `--name` | 重みのパスから自動（`<実験名>_<重みの名前>`） | 結果フォルダの名前 |
+| `--tile_size` | 256 | 画像をこの大きさに分けて処理する。メモリ不足で落ちたら 128 に下げる（16 の倍数） |
+
+- 結果は `results/<name>/visualization/<入力フォルダ名>/<元の名前>_<name>.png` に保存される。
+  例: `results/train_HAT-L_SRx2_finetune_net_g_100000/visualization/infer_input/`
+- 重みごとに結果フォルダが分かれるので、bicubic 版と Real-ESRGAN 方式の結果を並べて比べられる。
+- 同じ名前の結果フォルダがすでにあると、古いほうは名前の後ろに日時が付いて残る。
+- 白黒の画像を入れても、出力は 3 チャンネル（RGB）の png になる。
+- そのほかの設定（モデルの形・タイルの重なりなど）は `options/test/HAT-L_SRx2_finetune_infer.yml` から読む。
+  yml だけで動かす場合は `python hat/test.py -opt options/test/HAT-L_SRx2_finetune_infer.yml`（重みは yml の `pretrain_network_g`）。
+
 
 # HAT [![Replicate](https://replicate.com/cjwbw/hat/badge)](https://replicate.com/cjwbw/hat)
 

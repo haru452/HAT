@@ -55,7 +55,7 @@ def main():
     ds = opt['datasets']['test_1']
     if args.input:
         ds['dataroot_lq'] = args.input
-        ds['name'] = osp.basename(osp.normpath(args.input))
+    ds['name'] = osp.basename(osp.normpath(ds['dataroot_lq']))  # 結果のフォルダ名を入力フォルダ名にそろえる
     if not osp.isdir(ds['dataroot_lq']):
         raise SystemExit(f'入力フォルダが見つかりません: {ds["dataroot_lq"]}')
     if args.tile_size:
