@@ -55,8 +55,9 @@ python hat/train.py -opt options/train/train_HAT-L_SRx2_finetune.yml
 python hat/train.py -opt options/train/train_HAT-L_SRx2_finetune_realesrgan.yml
 ```
 - `datasets/LR` は使わない。学習中に `datasets/GT` から、Real-ESRGAN と同じ 2 段階の劣化（ぼかし・リサイズ・ノイズ・sinc）で毎回 LR を作る。
-- 劣化の値は Real-ESRGAN の `options/finetune_realesrgan_x2plus.yml` と同じ。JPEG 圧縮は Real-ESRGAN 側に合わせて入れない（`use_jpeg: false`）。
-- 正解は USM で強調してから使う（`gt_usm: true`、Real-ESRGAN の `l1_gt_usm` と同じ）。
+- 劣化の値は EDSR の学習と同じ `Real-ESRGAN/EDSR/degradation_lunar_mild.yml`（月面向けの弱い劣化：ぼかし → 1/2 に縮小 → 白黒ノイズ。sinc と JPEG はなし）。
+- 正解は強調しない（`gt_usm: false`、EDSR の既定と同じ）。
+- **LR を前もって作る必要はない**（`options/make_lr.py` は不要）。
 - 検証は bicubic 版と同じ `datasets/val_small`。結果は `experiments/train_HAT-L_SRx2_finetune_realesrgan/` に保存される。
 
 

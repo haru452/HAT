@@ -1,8 +1,8 @@
 # HAT-L x2 を Real-ESRGAN と同じ劣化で作った LR で学習する設定。
 # train_HAT-L_SRx2_finetune.yml (bicubic の LR) との違いは「学習用 LR の作り方」だけ:
 #   - LR は datasets/LR を使わず、学習中に GT から毎回ランダムに劣化させて作る (GPU 上)。
-#   - 劣化の値は Real-ESRGAN の options/finetune_realesrgan_x2plus.yml と同じ。
-#   - Real-ESRGAN 側に合わせて JPEG 圧縮は入れない (use_jpeg: false)。
+#   - 劣化の値は EDSR の学習と同じ Real-ESRGAN/EDSR/degradation_lunar_mild.yml (月面向けの弱い劣化)。
+#   - JPEG 圧縮は入れない (use_jpeg: false)。
 # 実行: python hat/train.py -opt options/train/train_HAT-L_SRx2_finetune_realesrgan.yml
 
 # general settings
@@ -13,29 +13,32 @@ num_gpu: auto
 manual_seed: 0
 
 # ----------------- 学習データを作るときの劣化 (RealHATMSEModel が使う) ----------------- #
-# Real-ESRGAN の l1_gt_usm: True と同じく、正解 (GT) を USM で強調してから使う。
-# 検証の GT は強調しないので、false の場合より PSNR は少し低く出やすい。
-gt_usm: true
-use_jpeg: false  # Real-ESRGAN 側で JPEG をコメントアウトしているのに合わせる
+# 値は Real-ESRGAN/EDSR/degradation_lunar_mild.yml (EDSR の学習で使った月面向けの弱い劣化) と同じ。
+# 根拠 (high6 の元画像 102 枚を測定): ノイズ σ 2.3~6.7、縮小前のぼけ σ 1.3~1.8、白黒画像。
+#   1 段目: ぼかしだけ (拡大縮小・ノイズなし)
+#   2 段目: ちょうど 1/2 に縮小 (area/bilinear/bicubic はランダム) してから白黒ノイズ
+#   最後の sinc フィルタ・JPEG は入れない
+gt_usm: false    # EDSR の既定 (--gt_usm なし) と同じ。正解を強調しない
+use_jpeg: false  # JPEG 圧縮は入れない
 
 # the first degradation process
-resize_prob: [0.2, 0.7, 0.1]  # up, down, keep
-resize_range: [0.15, 1.5]
-gaussian_noise_prob: 0.5
-noise_range: [1, 30]
-poisson_scale_range: [0.05, 3]
-gray_noise_prob: 0.4
-jpeg_range: [30, 95]  # use_jpeg: false なので使われない
+resize_prob: [0, 0, 1]   # up, down, keep: ランダムな拡大縮小はしない
+resize_range: [1, 1]
+gaussian_noise_prob: 1   # 1 段目のノイズは 0 (縮小後の 2 段目で入れる)
+noise_range: [0, 0]
+poisson_scale_range: [0, 0]
+gray_noise_prob: 1
+jpeg_range: [30, 95]     # use_jpeg: false なので使われない
 
 # the second degradation process
-second_blur_prob: 0.8
-resize_prob2: [0.3, 0.4, 0.3]  # up, down, keep
-resize_range2: [0.3, 1.2]
-gaussian_noise_prob2: 0.5
-noise_range2: [1, 25]
-poisson_scale_range2: [0.05, 2.5]
-gray_noise_prob2: 0.4
-jpeg_range2: [30, 95]  # use_jpeg: false なので使われない
+second_blur_prob: 0
+resize_prob2: [0, 0, 1]  # keep: ちょうど 1/scale に縮小する
+resize_range2: [1, 1]
+gaussian_noise_prob2: 0.5        # 半分はガウスノイズ、半分は明るさに比例するポアソンノイズ
+noise_range2: [1.5, 7]
+poisson_scale_range2: [0.15, 0.6]
+gray_noise_prob2: 1              # 白黒画像なので、ノイズも 3 チャンネル共通
+jpeg_range2: [30, 95]    # use_jpeg: false なので使われない
 
 # bicubic 版と同じ 128 にそろえる (Real-ESRGAN は 256 だが、HAT-L だと GPU のメモリが足りない)
 gt_size: 128
@@ -52,26 +55,28 @@ datasets:
     io_backend:
       type: disk
 
+    # ぼかしの値も degradation_lunar_mild.yml と同じ
     blur_kernel_size: 21
     kernel_list: ['iso', 'aniso', 'generalized_iso', 'generalized_aniso', 'plateau_iso', 'plateau_aniso']
-    kernel_prob: [0.45, 0.25, 0.12, 0.03, 0.12, 0.03]
-    sinc_prob: 0.1
-    blur_sigma: [0.2, 3]
-    betag_range: [0.5, 4]
+    kernel_prob: [0.60, 0.30, 0.05, 0.05, 0.0, 0.0]
+    sinc_prob: 0
+    blur_sigma: [1.0, 2.2]   # 測定値 1.3~1.8 を少し広げた範囲
+    betag_range: [0.8, 2]
     betap_range: [1, 2]
 
+    # 2 段目のぼかしは second_blur_prob: 0 なので使われない
     blur_kernel_size2: 21
     kernel_list2: ['iso', 'aniso', 'generalized_iso', 'generalized_aniso', 'plateau_iso', 'plateau_aniso']
-    kernel_prob2: [0.45, 0.25, 0.12, 0.03, 0.12, 0.03]
-    sinc_prob2: 0.1
-    blur_sigma2: [0.2, 1.5]
-    betag_range2: [0.5, 4]
+    kernel_prob2: [0.60, 0.30, 0.05, 0.05, 0.0, 0.0]
+    sinc_prob2: 0
+    blur_sigma2: [0.2, 1.0]
+    betag_range2: [0.8, 2]
     betap_range2: [1, 2]
 
-    final_sinc_prob: 0.8
+    final_sinc_prob: 0  # 最後の sinc フィルタ (リンギング) は入れない
 
     use_hflip: true
-    use_rot: false  # Real-ESRGAN と同じ
+    use_rot: true  # EDSR・bicubic 版と同じく回転も入れる
 
     # data loader
     use_shuffle: true
