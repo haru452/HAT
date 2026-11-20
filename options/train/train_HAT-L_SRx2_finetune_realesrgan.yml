@@ -1,0 +1,171 @@
+# HAT-L x2 を Real-ESRGAN と同じ劣化で作った LR で学習する設定。
+# train_HAT-L_SRx2_finetune.yml (bicubic の LR) との違いは「学習用 LR の作り方」だけ:
+#   - LR は datasets/LR を使わず、学習中に GT から毎回ランダムに劣化させて作る (GPU 上)。
+#   - 劣化の値は Real-ESRGAN の options/finetune_realesrgan_x2plus.yml と同じ。
+#   - Real-ESRGAN 側に合わせて JPEG 圧縮は入れない (use_jpeg: false)。
+# 実行: python hat/train.py -opt options/train/train_HAT-L_SRx2_finetune_realesrgan.yml
+
+# general settings
+name: train_HAT-L_SRx2_finetune_realesrgan
+model_type: RealHATMSEModel
+scale: 2
+num_gpu: auto
+manual_seed: 0
+
+# ----------------- 学習データを作るときの劣化 (RealHATMSEModel が使う) ----------------- #
+# Real-ESRGAN の l1_gt_usm: True と同じく、正解 (GT) を USM で強調してから使う。
+# 検証の GT は強調しないので、false の場合より PSNR は少し低く出やすい。
+gt_usm: true
+use_jpeg: false  # Real-ESRGAN 側で JPEG をコメントアウトしているのに合わせる
+
+# the first degradation process
+resize_prob: [0.2, 0.7, 0.1]  # up, down, keep
+resize_range: [0.15, 1.5]
+gaussian_noise_prob: 0.5
+noise_range: [1, 30]
+poisson_scale_range: [0.05, 3]
+gray_noise_prob: 0.4
+jpeg_range: [30, 95]  # use_jpeg: false なので使われない
+
+# the second degradation process
+second_blur_prob: 0.8
+resize_prob2: [0.3, 0.4, 0.3]  # up, down, keep
+resize_range2: [0.3, 1.2]
+gaussian_noise_prob2: 0.5
+noise_range2: [1, 25]
+poisson_scale_range2: [0.05, 2.5]
+gray_noise_prob2: 0.4
+jpeg_range2: [30, 95]  # use_jpeg: false なので使われない
+
+# bicubic 版と同じ 128 にそろえる (Real-ESRGAN は 256 だが、HAT-L だと GPU のメモリが足りない)
+gt_size: 128
+queue_size: 180  # batch_size_per_gpu で割り切れる数にする
+
+# dataset and data loader settings
+datasets:
+  train:
+    name: dataset1
+    type: RealESRGANDataset
+    # GT だけ使う (LR は学習中に作る)。bicubic 版と同じ GT フォルダ。
+    # meta_info を書かなければフォルダ内の画像を全部使う。
+    dataroot_gt: ./datasets/GT
+    io_backend:
+      type: disk
+
+    blur_kernel_size: 21
+    kernel_list: ['iso', 'aniso', 'generalized_iso', 'generalized_aniso', 'plateau_iso', 'plateau_aniso']
+    kernel_prob: [0.45, 0.25, 0.12, 0.03, 0.12, 0.03]
+    sinc_prob: 0.1
+    blur_sigma: [0.2, 3]
+    betag_range: [0.5, 4]
+    betap_range: [1, 2]
+
+    blur_kernel_size2: 21
+    kernel_list2: ['iso', 'aniso', 'generalized_iso', 'generalized_aniso', 'plateau_iso', 'plateau_aniso']
+    kernel_prob2: [0.45, 0.25, 0.12, 0.03, 0.12, 0.03]
+    sinc_prob2: 0.1
+    blur_sigma2: [0.2, 1.5]
+    betag_range2: [0.5, 4]
+    betap_range2: [1, 2]
+
+    final_sinc_prob: 0.8
+
+    use_hflip: true
+    use_rot: false  # Real-ESRGAN と同じ
+
+    # data loader
+    use_shuffle: true
+    num_worker_per_gpu: 6
+    batch_size_per_gpu: 2
+    dataset_enlarge_ratio: 1
+    prefetch_mode: ~
+
+  val_1:
+    name: my_val
+    type: PairedImageDataset
+    # bicubic 版と同じ検証データ (val_small、LR は bicubic)。2つの学習を同じ条件で比べるため。
+    dataroot_gt: ./datasets/val_small/GT
+    dataroot_lq: ./datasets/val_small/LR
+    io_backend:
+      type: disk
+
+# network structures (bicubic 版と同じ)
+network_g:
+  type: HAT
+  upscale: 2
+  in_chans: 3
+  img_size: 64
+  window_size: 16
+  compress_ratio: 3
+  squeeze_factor: 30
+  conv_scale: 0.01
+  overlap_ratio: 0.5
+  img_range: 1.
+  depths: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+  embed_dim: 180
+  num_heads: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+  mlp_ratio: 2
+  upsampler: 'pixelshuffle'
+  resi_connection: '1conv'
+
+# path
+path:
+  pretrain_network_g: experiments/pretrained_models/HAT-L_SRx2_ImageNet-pretrain.pth
+  strict_load_g: true
+  param_key_g: params_ema
+  resume_state: ~
+
+# training settings (bicubic 版と同じ)
+train:
+  ema_decay: 0.999
+  optim_g:
+    type: Adam
+    lr: !!float 1e-5
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  scheduler:
+    type: MultiStepLR
+    milestones: [50000, 75000, 90000]
+    gamma: 0.5
+
+  total_iter: 100000
+  warmup_iter: -1  # no warm up
+
+  # losses
+  pixel_opt:
+    type: L1Loss
+    loss_weight: 1.0
+    reduction: mean
+
+# validation settings
+val:
+  val_freq: !!float 1e4
+  save_img: false
+  pbar: true
+
+  metrics:
+    psnr:
+      type: calculate_psnr
+      crop_border: 2
+      test_y_channel: true
+      better: higher
+    ssim:
+      type: calculate_ssim
+      crop_border: 2
+      test_y_channel: true
+      better: higher
+
+# logging settings
+logger:
+  print_freq: 100
+  save_checkpoint_freq: !!float 1e4
+  use_tb_logger: true
+  wandb:
+    project: ~
+    resume_id: ~
+
+# dist training settings
+dist_params:
+  backend: nccl
+  port: 29500

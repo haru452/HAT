@@ -31,10 +31,14 @@ datasets:
   val_1:
     name: my_val
     type: PairedImageDataset
-    # TODO(要確認): 学習に使わず取り分けた検証用画像(50〜100枚程度)のフォルダに変更してください
-    # GTとLRは同じファイル名にすること
-    dataroot_gt: ./datasets/val/GT
-    dataroot_lq: ./datasets/val/LR
+    # 学習中の検証は datasets/val (1909枚) から200枚だけ抜き出した val_small を使う。
+    # 1909枚だと検証1回に約9.5時間かかるため。全枚数での評価は学習後に test.py で行う。
+    # val_small の作り方 (HATのフォルダで実行。GTとLRは同じファイル名であること):
+    #   mkdir -p datasets/val_small/GT datasets/val_small/LR
+    #   ls datasets/val/GT | shuf -n 200 --random-source=<(yes) | while read f; do
+    #     cp "datasets/val/GT/$f" datasets/val_small/GT/; cp "datasets/val/LR/$f" datasets/val_small/LR/; done
+    dataroot_gt: ./datasets/val_small/GT
+    dataroot_lq: ./datasets/val_small/LR
     io_backend:
       type: disk
 
@@ -102,7 +106,7 @@ train:
 val:
   val_freq: !!float 1e4
   save_img: false
-  pbar: False
+  pbar: true  # 検証中も進み具合を表示する (falseだと検証中は何も出ず止まって見える)
 
   metrics:
     psnr:

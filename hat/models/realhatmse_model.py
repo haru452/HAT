@@ -25,6 +25,14 @@ class RealHATMSEModel(SRModel):
         self.jpeger = DiffJPEG(differentiable=False).cuda()  # simulate JPEG compression artifacts
         self.usm_sharpener = USMSharp().cuda()  # do usm sharpening
         self.queue_size = opt.get('queue_size', 180)
+        # use_jpeg: false で JPEG 圧縮の劣化を入れない (Real-ESRGAN 側で JPEG を外したのに合わせるため)
+        self.use_jpeg = opt.get('use_jpeg', True)
+
+    def _jpeg(self, out, quality_range):
+        if not self.use_jpeg:
+            return out
+        jpeg_p = out.new_zeros(out.size(0)).uniform_(*quality_range)
+        return self.jpeger(out, quality=jpeg_p)
 
     @torch.no_grad()
     def _dequeue_and_enqueue(self):
@@ -106,9 +114,8 @@ class RealHATMSEModel(SRModel):
                     clip=True,
                     rounds=False)
             # JPEG compression
-            jpeg_p = out.new_zeros(out.size(0)).uniform_(*self.opt['jpeg_range'])
             out = torch.clamp(out, 0, 1)  # clamp to [0, 1], otherwise JPEGer will result in unpleasant artifacts
-            out = self.jpeger(out, quality=jpeg_p)
+            out = self._jpeg(out, self.opt['jpeg_range'])
 
             # ----------------------- The second degradation process ----------------------- #
             # blur
@@ -151,14 +158,12 @@ class RealHATMSEModel(SRModel):
                 out = F.interpolate(out, size=(ori_h // self.opt['scale'], ori_w // self.opt['scale']), mode=mode)
                 out = filter2D(out, self.sinc_kernel)
                 # JPEG compression
-                jpeg_p = out.new_zeros(out.size(0)).uniform_(*self.opt['jpeg_range2'])
                 out = torch.clamp(out, 0, 1)
-                out = self.jpeger(out, quality=jpeg_p)
+                out = self._jpeg(out, self.opt['jpeg_range2'])
             else:
                 # JPEG compression
-                jpeg_p = out.new_zeros(out.size(0)).uniform_(*self.opt['jpeg_range2'])
                 out = torch.clamp(out, 0, 1)
-                out = self.jpeger(out, quality=jpeg_p)
+                out = self._jpeg(out, self.opt['jpeg_range2'])
                 # resize back + the final sinc filter
                 mode = random.choice(['area', 'bilinear', 'bicubic'])
                 out = F.interpolate(out, size=(ori_h // self.opt['scale'], ori_w // self.opt['scale']), mode=mode)

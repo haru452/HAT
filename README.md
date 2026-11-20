@@ -50,6 +50,15 @@ python hat/train.py -opt options/train/train_HAT-L_SRx2_finetune.yml
 - 結果（ログ・重み）は `experiments/train_HAT-L_SRx2_finetune/` に保存される。
 - GPU のメモリが足りないときは yml の `batch_size_per_gpu` を下げる。
 
+### Real-ESRGAN と同じ劣化の LR で学習する場合
+```
+python hat/train.py -opt options/train/train_HAT-L_SRx2_finetune_realesrgan.yml
+```
+- `datasets/LR` は使わない。学習中に `datasets/GT` から、Real-ESRGAN と同じ 2 段階の劣化（ぼかし・リサイズ・ノイズ・sinc）で毎回 LR を作る。
+- 劣化の値は Real-ESRGAN の `options/finetune_realesrgan_x2plus.yml` と同じ。JPEG 圧縮は Real-ESRGAN 側に合わせて入れない（`use_jpeg: false`）。
+- 正解は USM で強調してから使う（`gt_usm: true`、Real-ESRGAN の `l1_gt_usm` と同じ）。
+- 検証は bicubic 版と同じ `datasets/val_small`。結果は `experiments/train_HAT-L_SRx2_finetune_realesrgan/` に保存される。
+
 
 # HAT [![Replicate](https://replicate.com/cjwbw/hat/badge)](https://replicate.com/cjwbw/hat)
 
