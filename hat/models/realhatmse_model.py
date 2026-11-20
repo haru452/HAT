@@ -26,6 +26,7 @@ class RealHATMSEModel(SRModel):
         self.usm_sharpener = USMSharp().cuda()  # do usm sharpening
         self.queue_size = opt.get('queue_size', 180)
         # use_jpeg: false で JPEG 圧縮の劣化を入れない (Real-ESRGAN 側で JPEG を外したのに合わせるため)
+        use_jpeg: false
         self.use_jpeg = opt.get('use_jpeg', True)
 
     def _jpeg(self, out, quality_range):
