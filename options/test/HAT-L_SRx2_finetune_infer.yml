@@ -1,5 +1,6 @@
 # ファインチューニングした HAT-L x2 で、フォルダ内の画像を超解像して保存する (正解画像は不要)。
-# 実行 (HAT フォルダで): python hat/test.py -opt options/test/HAT-L_SRx2_finetune_infer.yml
+# 実行 (HAT フォルダで): python hat/infer.py --weight <重み.pth>  (重み・入力フォルダを引数で変えられる)
+#   yml だけで動かすなら:   python hat/test.py -opt options/test/HAT-L_SRx2_finetune_infer.yml
 # 出力: results/HAT-L_SRx2_finetune_infer/visualization/my_images/<元の名前>_HAT-L_SRx2_finetune_infer.png
 name: HAT-L_SRx2_finetune_infer
 model_type: HATModel
